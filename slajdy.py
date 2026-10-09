@@ -387,9 +387,7 @@ section('Problem')
 slide('Dwie twarze, czy wazon?', img('grafiki/rubin_vase.png', 1000, 667),
       notes="""[ok. 3 min · start 0:02]
 
-Ten obrazek pewnie znacie. To wazon Rubina, nazwany od duńskiego psychologa, który opisał go ponad sto lat temu. Jedni widzą tu wazon, inni dwie twarze patrzące na siebie. Można się przełączać, ale nie da się zobaczyć obu naraz.
-
-[Zapytaj salę: kto widzi najpierw wazon, a kto twarze? Ręce w górę.]""")
+Ten obrazek pewnie znacie. To wazon Rubina, nazwany od duńskiego psychologa, który opisał go ponad sto lat temu. Jedni widzą tu wazon, inni dwie twarze patrzące na siebie. Można się przełączać, ale nie da się zobaczyć obu naraz.""")
 
 _vz = ["11110000", "11100000", "11000000", "11100000", "11110000", "11111000"]
 slide('Każdy piksel jest jednoznaczny', (

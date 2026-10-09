@@ -12,7 +12,7 @@ Wykład dla studiów magisterskich (blok 90 min) + aplikacja z żywym demo na ka
 | `f` | pełny ekran |
 | Ctrl+P | zapis do PDF (90 stron) |
 
-Slajdy generuje [slajdy.py](slajdy.py) (sam Python, bez zależności): `python3 slajdy.py` po każdej zmianie. Tekst do wygłoszenia jest też w `tekst_wykladu.docx`, ale numeracja slajdów w nim odpowiada starej, 20-slajdowej wersji.
+Slajdy generuje [slajdy.py](slajdy.py) (sam Python, bez zależności): `python3 slajdy.py` po każdej zmianie. Ten sam tekst, podzielony na 90 slajdów, jest w `tekst_wykladu.docx`.
 
 ## Plan wykładu
 
