@@ -667,27 +667,44 @@ slide('Gorzej, gdy świat jest bardziej skomplikowany', S(
        32, 1.5, fill=INK, a='start'), h=540),
     notes="""Gorzej, gdy świat jest bardziej skomplikowany. Tu na twarz z lewej strony pada cień. Próg patrzy tylko na jasność pojedynczego piksela, więc wszystko, co ciemne, wrzuca do jednego worka: włosy zlewają się z cieniem, a okulary, brwi i ubranie stają się dla niego tym samym. Progowanie nie wie nic o kształtach ani o tym, co leży obok piksela.""")
 
-_pear = 'M0 -150 C70 -150 90 -80 70 -30 C130 10 140 120 60 150 C20 165 -20 165 -60 150 C-140 120 -130 10 -70 -30 C-90 -80 -70 -150 0 -150 Z'
+def _gray(v, tint=(1, .965, .9)):
+    return '#%02X%02X%02X' % tuple(max(0, min(255, round(v * k))) for k in tint)
 
 
-def _band(scale=None, circle=False):
-    o = p(_pear, '#C9A27E')
-    if circle:
-        o += c(0, 0, 215, st=ORANGE, sw=10)
-    else:
-        o += g(p(_pear, st=ORANGE, sw=10, extra='vector-effect="non-scaling-stroke"'), 0, 0, scale)
-    return o
+# Kubek z progowania, ale stół w cieniu: jasność stołu 240 → 40 od lewej do prawej, kubek zawsze o ~95 ciemniejszy
+# od stołu obok (84 → 18 w poprzek kubka). Najciemniejszy stół (40) jest ciemniejszy od najjaśniejszego kubka (84),
+# więc żaden próg nie rozdzieli ich w całości; próg 110 daje: stół czarny od x = 260, kubek czarny, odblask biały.
+_crumbs = [(40, 70, 5), (60, 345, 4), (28, 250, 4), (95, 30, 3.5), (30, 150, 3)]  # poza kołem, od którego startuje gumka
+_glare = e(-42, -8, 8, 50, '#FFFFFF')
 
 
-slide('Aktywne kontury: gumka recepturka', S(
-    g(_band(circle=True) + ''.join(arr(math.cos(a) * 200, math.sin(a) * 200, math.cos(a) * 160, math.sin(a) * 160, ORANGE, 4, 16)
-                                    for a in [i * math.pi / 3 for i in range(6)]), 270, 260),
-    g(_band(1.3), 800, 260), g(_band(1.0), 1330, 260),
-    arr(520, 260, 580, 260, GRAY, 5), arr(1050, 260, 1110, 260, GRAY, 5),
-    t(270, 560, 'rzucamy gumkę wokół obiektu', 30, INK, w=600, f=F_H),
-    t(800, 560, 'sama się zaciska', 30, INK, w=600, f=F_H),
-    t(1330, 560, 'przylega do krawędzi', 30, INK, w=600, f=F_H), h=600),
-    notes="""Przełom lat osiemdziesiątych i dziewięćdziesiątych: aktywne kontury. Wyobraźcie sobie gumkę recepturkę, którą rzucamy wokół obiektu i która sama zaciska się na jego krawędziach. W komputerze ta gumka to zamknięta linia z kilkudziesięciu punktów, które krok po kroku przesuwają się do środka. Działają na nie dwie siły: napięcie gumki, które trzyma linię gładką, i przyciąganie krawędzi, czyli miejsc, gdzie jasność gwałtownie się zmienia. Gumka zatrzymuje się tam, gdzie te siły się równoważą, czyli na brzegu obiektu.""")
+def _shadow_scene():
+    return (r(0, 0, 400, 400, 'url(#acT)') + g(_mug('url(#acM)', handle=False) + f'<g opacity=".85">{_glare}</g>', 200, 210, 1.1)
+            + ''.join(c(x, y, rr, _gray(50)) for x, y, rr in _crumbs))
+
+
+_snake = (f'<circle cx="200" cy="215" r="150" fill="none" stroke="{ORANGE}" stroke-width="3" stroke-dasharray="10 8" opacity=".7"/>'
+          + ''.join(arr(200 + 146 * math.cos(a), 215 + 146 * math.sin(a), 200 + 118 * math.cos(a), 215 + 118 * math.sin(a), ORANGE, 4, 16)
+                    for a in [i * math.pi / 4 + math.pi / 8 for i in range(8)])
+          + g(p('M-70 -80 L70 -80 L60 80 Q0 96 -60 80 Z', st=ORANGE, sw=5), 200, 210, 1.1))
+slide('Aktywne kontury: krawędź zamiast progu', S(
+    f'<defs><linearGradient id="acT"><stop offset="0" stop-color="{_gray(240)}"/><stop offset="1" stop-color="{_gray(40)}"/></linearGradient>'
+    f'<linearGradient id="acM"><stop offset="0" stop-color="{_gray(84, (1, 1.03, 1.1))}"/><stop offset="1" stop-color="{_gray(18, (1, 1.03, 1.1))}"/></linearGradient></defs>',
+    *[panel(inner, 60 + i * 540, 0, 400, 400, 400, 400, rx=12) + t(260 + i * 540, 455, h_, 32, INK, w=600, f=F_H) + t(260 + i * 540, 500, sub, 26, MUTED)
+      for i, (inner, h_, sub) in enumerate([
+          (_shadow_scene(), 'zdjęcie', 'cień na stole, odblask na kubku'),
+          (r(0, 0, 400, 400, '#FFFFFF') + r(260, 0, 140, 400, '#14161B')
+           + g(_mug('#14161B', handle=False) + _glare, 200, 210, 1.1) + ''.join(c(x, y, rr, '#14161B') for x, y, rr in _crumbs),
+           'progowanie ✗', 'kubek zlał się z cieniem, ma dziurę'),
+          (_shadow_scene() + _snake, 'aktywny kontur ✓', 'gumka zacisnęła się na krawędzi')])], h=530),
+    cap='Liczy się różnica między sąsiednimi pikselami, a nie jasność pojedynczego piksela.',
+    notes="""Przełom lat osiemdziesiątych i dziewięćdziesiątych: aktywne kontury. Wyobraźcie sobie gumkę recepturkę, którą rzucamy wokół obiektu i która sama zaciska się na jego krawędziach.
+
+Czym to się różni od progowania? Wróćmy do kubka sprzed dwóch slajdów, ale teraz na stół pada cień, a na kubku jest odblask. Progowanie porównuje każdy piksel z jedną liczbą dla całego obrazu. Tu nie ma dobrego progu: ciemny koniec stołu jest ciemniejszy niż jasny bok kubka. Dlatego kubek zlewa się z cieniem, odblask robi w nim dziurę, a okruchy na stole stają się małymi obiektami.
+
+Gumka nie pyta, czy piksel jest ciemny, tylko gdzie jasność zmienia się w porównaniu z sąsiadami, czyli gdzie jest krawędź. Cień przyciemnia i kubek, i stół tuż obok niego, więc krawędź zostaje. Do tego gumka jest zawsze jedną zamkniętą, gładką linią: nie zrobi dziury w środku kubka i nie rozpadnie się na kawałki, a okruchy daleko od niej w ogóle jej nie obchodzą.
+
+Cena jest taka, że ktoś musi tę gumkę najpierw rzucić w pobliżu obiektu. Progowanie działało samo.""")
 
 
 def _terrain(x):
@@ -696,14 +713,60 @@ def _terrain(x):
 
 _tpts = ' '.join(f'L{x} {_terrain(x):.1f}' for x in range(0, 1401, 10))
 _lvl = 250
-slide('Wododziały: obraz jako górzysty teren zalewany wodą', S(
-    g(r(0, _lvl, 1400, 600 - _lvl, '#4C9DB8') + p(f'M0 600 {_tpts} L1400 600 Z', '#8A6F55')
-      + ''.join(l(x, _terrain(x) - 4, x, 90, ORANGE, 6, '12 8') + t(x, 70, 'granica', 28, ORANGE, w=600)
-                for x in (475, 925)) + l(0, _lvl, 1400, _lvl, '#2F7C96', 2)
-      + ''.join(t(x, 420, 'jezioro', 26, '#FFFFFF', w=600) for x in (250, 1150))
-      + t(700, _lvl + 50, 'poziom wody rośnie ↑', 26, '#FFFFFF', w=600), 100, 0),
-    t(800, 640, 'jasne piksele = góry, ciemne = doliny. Gdzie spotykają się jeziora, tam jest granica.', 28, MUTED), h=660),
-    notes="""Albo metoda wododziałów: traktujemy obraz jak mapę górzystego terenu, zalewamy ją wodą i patrzymy, gdzie spotykają się jeziora. Jasność piksela to wysokość terenu: jasne piksele to góry, ciemne to doliny. Woda powoli podnosi się w każdej dolinie i każde jezioro to osobny obszar. Tam, gdzie dwa jeziora miałyby się zlać, stawiamy tamę, i właśnie te tamy są granicami obiektów.""")
+# Trzy stykające się komórki: jasne tło (góry), jaśniejsze ścianki między komórkami (niskie grzbiety),
+# ciemne wnętrza (doliny). Teren po lewej to przekrój wzdłuż przerywanej linii: 3 doliny, 2 grzbiety.
+_wc, _wr = [(88, 205), (200, 190), (312, 210)], 64
+
+
+def _chord(a, b):
+    """Odcinek wspólny dwóch stykających się komórek (równe promienie) = ścianka, a po zalaniu tama."""
+    d = math.dist(a, b)
+    h, ux, uy = math.sqrt(_wr ** 2 - (d / 2) ** 2), (a[1] - b[1]) / d, (b[0] - a[0]) / d
+    mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+    return mx + h * ux, my + h * uy, mx - h * ux, my - h * uy
+
+
+def _basin(i, n=180):
+    """Komórka i bez części leżących w sąsiadkach: okrąg pocięty tamami."""
+    cx, cy = _wc[i]
+    pts = [(cx + _wr * math.cos(2 * math.pi * k / n), cy + _wr * math.sin(2 * math.pi * k / n)) for k in range(n)]
+    pts = [q for q in pts if all(math.dist(q, o) >= _wr - 1e-6 for j, o in enumerate(_wc) if j != i)]
+    return ' '.join(f'{x:.1f},{y:.1f}' for x, y in pts)
+
+
+_walls = [_chord(a, b) for a, b in zip(_wc, _wc[1:])]
+_cell_bg = r(0, 0, 400, 400, '#F3E6EE')
+_cell_body = (''.join(c(x, y, _wr, '#C98BB0') for x, y in _wc) + ''.join(l(*w, '#EBD3E1', 5) for w in _walls)
+              + ''.join(c(x, y, 16, '#7A3B5E') for x, y in _wc))
+_terr = (r(0, _lvl, 1400, 600 - _lvl, '#4C9DB8') + p(f'M0 600 {_tpts} L1400 600 Z', '#8A6F55')
+         + ''.join(l(x, _terrain(x) - 4, x, 90, ORANGE, 8, '16 10') + t(x, 66, 'granica', 50, ORANGE, w=600) for x in (475, 925))
+         + l(0, _lvl, 1400, _lvl, '#2F7C96', 3)
+         + ''.join(t(x, 420, str(i + 1), 80, '#FFFFFF', w=700, f=F_H) for i, x in enumerate((250, 700, 1150)))
+         + t(700, _lvl - 24, 'woda rośnie ↑', 44, '#2F7C96', w=600))
+slide('Wododziały: same rozdzielają stykające się obiekty', S(
+    t(392, 30, 'przekrój wzdłuż przerywanej linii jako teren', 28, MUTED),
+    g(_terr, 0, 76, .56),
+    t(392, 480, 'jasne piksele = góry, ciemne = doliny', 32, INK, w=600, f=F_H),
+    t(392, 526, 'trzy komórki = trzy doliny', 26, MUTED),
+    *[panel(inner, 850 + i * 410, 40, 380, 380, 400, 400, rx=12) + t(1040 + i * 410, 480, h_, 32, INK, w=600, f=F_H)
+      + t(1040 + i * 410, 526, sub, 26, MUTED)
+      for i, (inner, h_, sub) in enumerate([
+          (_cell_bg + ''.join(c(x, y, _wr, 'none', ORANGE, 10) for x, y in _wc) + _cell_body
+           + f'<ellipse cx="200" cy="200" rx="192" ry="112" fill="none" stroke="{ORANGE}" stroke-width="3" stroke-dasharray="10 8" opacity=".6"/>',
+           'aktywny kontur ✗', 'jedna gumka = jeden obiekt'),
+          (_cell_bg + _cell_body
+           + ''.join(f'<polygon points="{_basin(k_)}" fill="{col}" opacity=".7"/>' for k_, col in enumerate([CYAN, YELLOW, '#9CC97A']))
+           + ''.join(l(*w, ORANGE, 6, '10 7') for w in _walls) + l(0, 200, 400, 200, '#5B6168', 3, '10 8')
+           + ''.join(t(x, y - 26, str(k_ + 1), 40, INK, w=700, f=F_H) for k_, (x, y) in enumerate(_wc)),
+           'wododziały ✓', 'trzy jeziora, tamy na ściankach')])], w=1660, h=550),
+    cap='Woda podnosi się w każdej dolinie osobno. Tam, gdzie dwa jeziora się spotykają, stawiamy tamę: to jest granica.',
+    notes="""Albo metoda wododziałów: traktujemy obraz jak mapę górzystego terenu, zalewamy ją wodą i patrzymy, gdzie spotykają się jeziora.
+
+Czym to się różni od gumki? Weźmy trzy komórki z mikroskopu, które się ze sobą stykają. Gumka to zawsze jedna zamknięta linia. Rzucona wokół nich zaciśnie się na zewnętrznym brzegu całej grupy i powie, że to jeden obiekt. Żeby je rozdzielić, ktoś musiałby rzucić trzy gumki, każdą osobno.
+
+Wododziały robią to same i od razu dla całego obrazu. Po lewej widać przekrój wzdłuż przerywanej linii. Jasność to wysokość, więc ciemne wnętrza komórek to doliny, jasne tło to góry, a cienkie, jaśniejsze ścianki między komórkami to grzbiety. Woda podnosi się w każdej dolinie osobno. Tam, gdzie dwa jeziora miałyby się zlać, stawiamy tamę, i te tamy to właśnie granice. Wychodzą trzy jeziora, czyli trzy komórki, i to nawet wtedy, gdy grzbiet między nimi jest niski.
+
+Dlatego wododziały do dziś pomagają liczyć komórki na zdjęciach z mikroskopu. Ich słabość to szum: każda drobna dolinka tworzy własne jezioro, więc bez wcześniejszego wygładzenia obraz rozpada się na setki kawałków.""")
 
 _gp = ["..ooo..", ".ooooo.", ".ooooo.", "..ooo..", "...o..."]
 _ge, _gx, _gy, _gs = [], 300, 60, 110
