@@ -76,7 +76,8 @@ def legend(img, items):
 def classical(frame):
     """Skin-colour threshold in YCrCb, refined by GrabCut on a downscaled frame."""
     ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
-    skin = cv2.inRange(ycrcb, (0, 133, 77), (255, 173, 127))
+    # Cr, Cb: klasyczne 133-173 / 77-127 poszerzone o 4 w każdą stronę (~1,4x więcej kolorów przechodzi próg)
+    skin = cv2.inRange(ycrcb, (0, 129, 73), (255, 177, 131))
     skin = cv2.morphologyEx(skin, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
 
     small = cv2.resize(frame, None, fx=0.25, fy=0.25)

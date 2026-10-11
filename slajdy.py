@@ -707,15 +707,27 @@ Gumka nie pyta, czy piksel jest ciemny, tylko gdzie jasność zmienia się w por
 Cena jest taka, że ktoś musi tę gumkę najpierw rzucić w pobliżu obiektu. Progowanie działało samo.""")
 
 
-def _terrain(x):
-    return 330 + 140 * math.cos(2 * math.pi * (x - 250) / 450) + 40 * math.sin(x / 200)
+# Trzy stykające się komórki: ciemny środek, jasny brzeg, jeszcze jaśniejsze tło. Teren po lewej jest LICZONY
+# z jasności obrazka wzdłuż przerywanej linii (y = 200), więc zgadza się z nim z definicji.
+_wc, _wr = [(88, 210), (200, 190), (312, 210)], 64  # każdy środek 10 px od przerywanej linii = równe doliny
+_WBG, _WDARK, _WRIM, _WCOL = '#F3E6EE', '#7A3B5E', '#E6C7DA', [CYAN, YELLOW, '#9CC97A']
 
 
-_tpts = ' '.join(f'L{x} {_terrain(x):.1f}' for x in range(0, 1401, 10))
-_lvl = 250
-# Trzy stykające się komórki: jasne tło (góry), jaśniejsze ścianki między komórkami (niskie grzbiety),
-# ciemne wnętrza (doliny). Teren po lewej to przekrój wzdłuż przerywanej linii: 3 doliny, 2 grzbiety.
-_wc, _wr = [(88, 205), (200, 190), (312, 210)], 64
+def _wmix(s):
+    """Kolor komórki w odległości s (w promieniach) od środka: gładko od ciemnego środka do jasnego brzegu (od s = 0,85)."""
+    f = (1 - math.cos(math.pi * min(s / .85, 1))) / 2
+    return '#%02X%02X%02X' % tuple(round(a + (b - a) * f) for a, b in zip(rgb(_WDARK), rgb(_WRIM)))
+
+
+def _wpix(x, y):
+    """(obszar 0–2 albo None dla tła, kolor) piksela: obszar to najbliższy środek, o ile piksel leży w komórce."""
+    d, i = min((math.dist((x, y), o), k) for k, o in enumerate(_wc))
+    return (i, _wmix(d / _wr)) if d <= _wr else (None, _WBG)
+
+
+def _ty(col):
+    """Jasność → wysokość terenu (y w dół): tło 235 → 150, środek komórki 82 → 500."""
+    return 500 - (lum(col) - lum(_WDARK)) * 350 / (lum(_WBG) - lum(_WDARK))
 
 
 def _chord(a, b):
@@ -735,16 +747,24 @@ def _basin(i, n=180):
 
 
 _walls = [_chord(a, b) for a, b in zip(_wc, _wc[1:])]
-_cell_bg = r(0, 0, 400, 400, '#F3E6EE')
-_cell_body = (''.join(c(x, y, _wr, '#C98BB0') for x, y in _wc) + ''.join(l(*w, '#EBD3E1', 5) for w in _walls)
-              + ''.join(c(x, y, 16, '#7A3B5E') for x, y in _wc))
-_terr = (r(0, _lvl, 1400, 600 - _lvl, '#4C9DB8') + p(f'M0 600 {_tpts} L1400 600 Z', '#8A6F55')
-         + ''.join(l(x, _terrain(x) - 4, x, 90, ORANGE, 8, '16 10') + t(x, 66, 'granica', 50, ORANGE, w=600) for x in (475, 925))
-         + l(0, _lvl, 1400, _lvl, '#2F7C96', 3)
-         + ''.join(t(x, 420, str(i + 1), 80, '#FFFFFF', w=700, f=F_H) for i, x in enumerate((250, 700, 1150)))
-         + t(700, _lvl - 24, 'woda rośnie ↑', 44, '#2F7C96', w=600))
+_wgrad = '<defs>' + ''.join(  # gradient w komórce = ten sam _wmix, z którego liczony jest teren
+    f'<radialGradient id="wsG{k}" gradientUnits="userSpaceOnUse" cx="{x}" cy="{y}" r="{_wr}">'
+    + ''.join(f'<stop offset="{s}" stop-color="{_wmix(s)}"/>' for s in (0, .1, .2, .3, .4, .5, .6, .7, .8, .85, 1))
+    + '</radialGradient>' for k, (x, y) in enumerate(_wc)) + '</defs>'
+_cell_bg = r(0, 0, 400, 400, _WBG)
+_cell_body = ''.join(f'<polygon points="{_basin(k)}" fill="url(#wsG{k})"/>' for k in range(3))
+_prof = [(x, *_wpix(x, 200)) for x in range(0, 401, 2)]  # (x, obszar, kolor) wzdłuż przerywanej linii
+_wl = _ty('#B9B9B9')  # poziom wody: jasność 185, niżej niż brzegi komórek (210) i tło (235)
+_tpts = ' '.join(f'L{x * 3.5} {_ty(col):.1f}' for x, _, col in _prof)
+_lake_x = [[x for x, k_, _ in _prof if k_ == i] for i in range(3)]
+_dams = [((x + 1) * 3.5, _ty(col)) for (x, a, col), (_, b, _) in zip(_prof, _prof[1:]) if None not in (a, b) and a != b]
+_terr = (''.join(r(xs[0] * 3.5, _wl, (xs[-1] - xs[0]) * 3.5, 600 - _wl, col) for xs, col in zip(_lake_x, _WCOL))
+         + p(f'M0 600 {_tpts} L1400 600 Z', '#8A6F55')
+         + ''.join(l(x, y - 4, x, 90, ORANGE, 8, '16 10') + t(x, 66, 'granica', 50, ORANGE, w=600) for x, y in _dams)
+         + ''.join(t(cx * 3.5, 440, str(i + 1), 80, INK, w=700, f=F_H) for i, (cx, _) in enumerate(_wc))
+         + t(700, _wl - 62, 'woda rośnie ↑', 44, '#2F7C96', w=600))
 slide('Wododziały: same rozdzielają stykające się obiekty', S(
-    t(392, 30, 'przekrój wzdłuż przerywanej linii jako teren', 28, MUTED),
+    _wgrad, t(392, 30, 'przekrój wzdłuż przerywanej linii jako teren', 28, MUTED),
     g(_terr, 0, 76, .56),
     t(392, 480, 'jasne piksele = góry, ciemne = doliny', 32, INK, w=600, f=F_H),
     t(392, 526, 'trzy komórki = trzy doliny', 26, MUTED),
@@ -755,7 +775,7 @@ slide('Wododziały: same rozdzielają stykające się obiekty', S(
            + f'<ellipse cx="200" cy="200" rx="192" ry="112" fill="none" stroke="{ORANGE}" stroke-width="3" stroke-dasharray="10 8" opacity=".6"/>',
            'aktywny kontur ✗', 'jedna gumka = jeden obiekt'),
           (_cell_bg + _cell_body
-           + ''.join(f'<polygon points="{_basin(k_)}" fill="{col}" opacity=".7"/>' for k_, col in enumerate([CYAN, YELLOW, '#9CC97A']))
+           + ''.join(f'<polygon points="{_basin(k_)}" fill="{col}" opacity=".75"/>' for k_, col in enumerate(_WCOL))
            + ''.join(l(*w, ORANGE, 6, '10 7') for w in _walls) + l(0, 200, 400, 200, '#5B6168', 3, '10 8')
            + ''.join(t(x, y - 26, str(k_ + 1), 40, INK, w=700, f=F_H) for k_, (x, y) in enumerate(_wc)),
            'wododziały ✓', 'trzy jeziora, tamy na ściankach')])], w=1660, h=550),
@@ -1044,14 +1064,16 @@ def _sizes(x, y, sizes, cols):
     return ''.join(o)
 
 
-slide('A może w ogóle nie zmniejszać obrazu?', S(
+slide('DeepLab: a może w ogóle nie zmniejszać obrazu?', S(
     t(60, 60, 'FCN, U-Net: zmniejsz, a potem z trudem odtwórz', 32, INK, 'start', 600, F_H),
     _sizes(60, 190, [160, 110, 70, 40, 70, 110, 160], ['#AAB4BD', '#97A2AC', '#838F9A', ORANGE, SKIN, '#E3B460', YELLOW]),
     t(60, 380, 'DeepLab (Google): zostań przy dużym obrazie', 32, CYAN, 'start', 600, F_H),
     _sizes(60, 510, [160] * 7, ['#AAB4BD', '#97A2AC', '#838F9A', '#6B7681', '#838F9A', '#97A2AC', CYAN]), h=620),
     notes="""[ok. 3,5 min · start 0:26]
 
-Zespół z Google podszedł do problemu z drugiej strony. Zamiast zmniejszać obraz, a potem z trudem go odtwarzać, zapytali: a może w ogóle go nie zmniejszać?""")
+Trzecia sieć z tego okresu to DeepLab. To nie jeden model, tylko cała rodzina: pierwsza wersja powstała na przełomie 2014 i 2015 roku w zespole związanym z Google, a kolejne wychodziły przez następne trzy lata. W odróżnieniu od U-Netu DeepLab od początku celował w zwykłe zdjęcia: ulice, ludzi, zwierzęta. Przez kilka lat należał do najlepszych modeli do segmentacji semantycznej.
+
+Rozwiązuje ten sam problem co U-Net, czyli zmniejszanie obrazu po drodze, ale podchodzi do niego z drugiej strony. U-Net najpierw zmniejsza obraz, a potem odzyskuje szczegóły skrótami. Twórcy DeepLaba zapytali: a może w ogóle nie zmniejszać go tak bardzo?""")
 
 BLUE = '#5B8CC4'
 slide('Ale jeden piksel nie powie, czym jest', S(
@@ -1090,7 +1112,7 @@ slide('Filtr rozstawiony szerzej, jak rozciągnięta sieć rybacka', S(
     _conv(1080, 0, 2), t(1220, 330, 'rozszerzony: te same 9 punktów, duży obszar', 28, INK, w=600, f=F_H),
     _netdraw(1220, 480, 90, CYAN),
     t(800, 480, 'tyle samo sznurka →', 28, MUTED), h=600),
-    notes="""Rozwiązanie widać na slajdzie. Po lewej zwykły filtr: patrzy na dziewięć sąsiednich pikseli. Po prawej ten sam filtr, ale rozstawiony szerzej, z przerwami. Nadal patrzy na dziewięć punktów, ale obejmuje dużo większy obszar. Trochę jak sieć rybacka: rozciągamy oczka i ta sama ilość sznurka obejmuje większy kawałek wody.""")
+    notes="""Rozwiązanie DeepLaba widać na slajdzie. Po lewej zwykły filtr: patrzy na dziewięć sąsiednich pikseli. Po prawej ten sam filtr, ale rozstawiony szerzej, z przerwami. Nadal patrzy na dziewięć punktów, ale obejmuje dużo większy obszar. Trochę jak sieć rybacka: rozciągamy oczka i ta sama ilość sznurka obejmuje większy kawałek wody. Po angielsku to atrous convolution, od francuskiego „à trous”, czyli „z dziurami”.""")
 
 
 def _dots(cx, cy, step, col):
@@ -1105,7 +1127,7 @@ slide('Kilka filtrów o różnym rozstawie naraz', S(
     _dots(440, 390, 30, ORANGE), _dots(1010, 300, 150, YELLOW), _dots(700, 300, 80, CYAN),
     legend(1440, 180, [(ORANGE, 'mały rozstaw'), (CYAN, 'średni'), (YELLOW, 'duży')], 28, 30, 54), h=580),
     cap='Mały kubek na pierwszym planie i cały budynek w tle — w jednym przejściu.',
-    notes="""Drugi pomysł to patrzenie w kilku skalach naraz: kilka takich filtrów o różnym rozstawie działa równolegle. Dzięki temu sieć radzi sobie i z małym kubkiem na pierwszym planie, i z całym budynkiem w tle.""")
+    notes="""Drugi pomysł DeepLaba to patrzenie w kilku skalach naraz: kilka takich filtrów o różnym rozstawie działa równolegle. Dzięki temu sieć radzi sobie i z małym kubkiem na pierwszym planie, i z całym budynkiem w tle.""")
 
 slide('Później DeepLab dostał część podobną do U-Netu', S(
     r(80, 160, 520, 200, '#6B7681', rx=16), tm(340, 240, ['DeepLab', 'kilka skal naraz'], 34, 1.3, fill=PAPER, w=600, f=F_H),
