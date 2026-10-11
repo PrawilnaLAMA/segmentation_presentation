@@ -106,8 +106,12 @@ def img(src, w, h, extra=''):
     return f'<img src="{src}" alt="" style="width:{w}px;height:{h}px;object-fit:contain;{extra}">'
 
 
+def rgb(hexcol):
+    return tuple(int(hexcol[i:i + 2], 16) for i in (1, 3, 5))
+
+
 def lum(hexcol):
-    rr, gg, bb = (int(hexcol[i:i + 2], 16) for i in (1, 3, 5))
+    rr, gg, bb = rgb(hexcol)
     return round(0.299 * rr + 0.587 * gg + 0.114 * bb)
 
 
@@ -323,25 +327,39 @@ Dzień dobry, witam wszystkich serdecznie. Ja nazywam się Leon Woźniak i razem
 
 Zacznę od obrazka po prawej. To 180 kolorowych kwadratów ułożonych w siatkę. Nic więcej. A jednak każdy z was widzi w nich twarz w okularach. Nikt nie podpisał, które kwadraty to włosy, które skóra, a które okulary. Wasz mózg zrobił to sam, w ułamku sekundy.""")
 
-_nums = [[str(lum(mosaic_col(i, j, ch))) for i, ch in enumerate(row)] for j, row in enumerate(MOSAIC)]
+_ch = []
+for k_, (name, ink, edge) in reversed(list(enumerate([('R', '#B83A2E', '#E9B8B2'), ('G', '#2E7D32', '#B5D6B7'),
+                                                      ('B', '#1F5FAD', '#B3C7E6')]))):  # od tyłu: B, G, R na wierzchu
+    x0, y0 = 650 + k_ * 30, 60 - k_ * 30
+    _nums = [[str(rgb(mosaic_col(i, j, ch))[k_]) for i, ch in enumerate(row)] for j, row in enumerate(MOSAIC)]
+    _ch += [grid(x0, y0, 36, MOSAIC, lambda i, j, ch: '#FFFFFF', st=edge, nums=_nums, nsize=13, ncol=ink),
+            r(x0, y0, 432, 540, st=ink, sw=3), t(x0 - 12, y0 + 26, name, 28, ink, 'end', 700, F_M)]
+_px = rgb(SKIN)  # piksel (9, 4) mozaiki to skóra
 slide('Dla komputera zdjęcie to tabela liczb', S(
-    grid(100, 0, 40, MOSAIC, mosaic_col),
-    t(340, 650, 'to widzicie wy', 28, MUTED),
-    arr(630, 300, 740, 300, ORANGE, 6),
-    grid(800, 0, 40, MOSAIC, lambda i, j, ch: '#FFFFFF', st=LINE, nums=_nums, nsize=15, ncol=INK),
-    t(1040, 650, 'to „widzi” komputer: jasność każdego piksela', 28, MUTED), w=1400, h=670),
+    grid(40, 0, 40, MOSAIC, mosaic_col),
+    t(280, 650, 'to widzicie wy', 28, MUTED),
+    arr(545, 300, 610, 300, ORANGE, 6),
+    *_ch, r(650 + 9 * 36, 60 + 4 * 36, 36, 36, st=ORANGE, sw=4),
+    l(1010, 211, 1200, 211, ORANGE, 3, '8 8'), r(1200, 151, 120, 120, SKIN, rx=10),  # y=211: nad cyframi wszystkich trzech tabel
+    t(1400, 119, 'jeden piksel skóry', 28, MUTED),
+    *[t(1345, 193 + k_ * 44, f'{ch} {_px[k_]}', 38, col, 'start', 600, F_M)
+      for k_, (ch, col) in enumerate(zip('RGB', ['#B83A2E', '#2E7D32', '#1F5FAD']))],
+    tm(1400, 360, ['trzy liczby od 0 do 255:', 'ile czerwonego, zielonego', 'i niebieskiego'], 26, fill=MUTED),
+    t(896, 650, 'to „widzi” komputer: trzy liczby na każdy piksel (RGB)', 28, MUTED), w=1600, h=670),
     cap='Żeby zobaczył twarz, musi każdemu pikselowi przypisać znaczenie. To jest segmentacja.',
-    notes="""Komputer tego nie potrafi. Dla niego zdjęcie to tabela liczb. Żeby zobaczył w nim twarz, włosy czy okulary, musi każdemu pikselowi przypisać znaczenie. To właśnie jest segmentacja obrazu.""")
+    notes="""Komputer tego nie potrafi. Dla niego zdjęcie to tabela liczb, a dokładniej trzy tabele. Każdy piksel jest opisany trzema liczbami od 0 do 255: ile jest w nim czerwonego, zielonego i niebieskiego. To zapis RGB. Ten beżowy piksel skóry to dla komputera po prostu trzy liczby: 217, 160 i 102.
 
-_A = ["HHHHhkSS", "HHHhkkSS", "HHHHhkkS", "HHhkkSSS", "HHHhkSSS", "HHHHhkSS"]
+Żeby zobaczył w tych liczbach twarz, włosy czy okulary, musi każdemu pikselowi przypisać znaczenie. To właśnie jest segmentacja obrazu.""")
+
+_A = ["SSkhHHHH", "SSkkhHHH", "SkkhHHHH", "SSSkkhHH", "SSSkhHHH", "SSkhHHHH"]  # skóra z lewej, włosy z prawej
 _B = ["SSSmffmS", "SSmffmSS", "SSmffmSS", "SSSmffmS", "SSmffmSS", "SSSmfmSS"]
 _zc = dict(H='#3B2A22', h='#6E4E3C', k='#B08566', S='#E3B48F', f='#1E2024', m='#7A6656')
 slide('Gdzie kończy się twarz, a zaczynają włosy?', S(
     face(300, 300, 1.15),
-    c(398, 150, 46, st=ORANGE, sw=5), c(355, 285, 46, st=CYAN, sw=5),
-    l(444, 150, 760, 100, ORANGE, 3, '8 8'), l(400, 285, 1160, 330, CYAN, 3, '8 8'),
-    grid(760, 60, 46, _A, _zc), p('M940 50 L948 340', st=ORANGE, sw=5, dash='10 8'),
-    p('M900 50 L912 340', st=ORANGE, sw=5, dash='10 8', op=.5),
+    c(371, 196, 38, st=ORANGE, sw=5), c(355, 285, 46, st=CYAN, sw=5),  # pomarańczowe: linia włosów nad czołem
+    l(409, 196, 760, 120, ORANGE, 3, '8 8'), l(400, 285, 1160, 330, CYAN, 3, '8 8'),
+    grid(760, 60, 46, _A, _zc), p('M948 50 L940 340', st=ORANGE, sw=5, dash='10 8'),
+    p('M988 50 L976 340', st=ORANGE, sw=5, dash='10 8', op=.5),
     t(944, 390, 'włosy czy skóra?', 30, ORANGE, w=600),
     grid(1160, 220, 46, _B, _zc), p('M1236 210 L1236 500', st=CYAN, sw=5, dash='10 8'),
     p('M1300 210 L1296 500', st=CYAN, sw=5, dash='10 8', op=.5),
@@ -375,12 +393,6 @@ slide('Plan', S(
            fill=PAPER, w=600, f=F_H) for i, (name, fn) in enumerate(_steps)]), dark=True,
     notes="""Plan jest prosty. Najpierw czym jest segmentacja. Potem jak przez pięćdziesiąt lat uczyliśmy komputery ją robić. W połowie pokaz na żywo z kamerą. A na koniec gdzie spotykacie ją na co dzień i czego jeszcze nie umiemy.""")
 
-slide('Te kolory będą wracać', S(
-    face(420, 290, 1.25, CLS),
-    legend(900, 90, [(CYAN, 'okulary'), (SKIN, 'skóra'), (HAIR, 'włosy'), (BROW, 'brwi'),
-                     (ORANGE, 'usta'), (CLOTH, 'ubranie'), ('#2A2D34', 'tło')], 40, 52, 70)),
-    notes="""Jedna wskazówka na resztę wykładu: kolory z tego obrazka będą wracać. Turkus to zawsze okulary, beż to skóra, fiolet to włosy.""")
-
 # =====================================================================
 section('Problem')
 
@@ -393,7 +405,8 @@ _vz = ["11110000", "11100000", "11000000", "11100000", "11110000", "11111000"]
 slide('Każdy piksel jest jednoznaczny', (
     '<div style="display:flex;align-items:center;gap:72px">'
     + '<div style="position:relative">' + img('grafiki/rubin_vase.png', 720, 480)
-    + f'<div style="position:absolute;left:300px;top:250px;width:90px;height:90px;border:5px solid {ORANGE};border-radius:8px"></div></div>'
+    # ramka kończy się na x=370: prawa twarz zaczyna się najwcześniej na x≈380 (czubek nosa)
+    + f'<div style="position:absolute;left:296px;top:250px;width:64px;height:64px;border:5px solid {ORANGE};border-radius:8px"></div></div>'
     + '<div style="width:640px;height:620px">' + S(
         grid(80, 20, 62, _vz, {'1': '#FAF7F1', '0': '#14161B'}, st=LINE, nums=_vz, nsize=26,
              ncol=lambda f: INK if f == '#FAF7F1' else PAPER),
@@ -470,14 +483,7 @@ slide('Kolorowanka z numerkami, tylko odwrotnie', S(
     t(1280, 30, 'Segmentacja: kolor → numer', 32, INK, w=600, f=F_H),
     g(_house(_fills, None, '??????', '#FFFFFF', ORANGE), 1000, 60),
     t(1280, 520, 'setki tysięcy pól, nikt nie narysował konturów', 28, MUTED)),
-    notes="""Najłatwiej wyobrazić sobie kolorowankę z numerkami. Każde pole ma numer, a numer mówi, jakim kolorem je pomalować. Segmentacja to zadanie odwrotne: dostajemy gotowy, pomalowany obrazek i musimy sami wpisać numer do każdego pola. Tyle że pól jest kilkaset tysięcy, a nikt nie narysował konturów.""")
-
-_g6 = ["000000", "000000", "001100", "011110", "001100", "000000"]
-slide('Najprostszy przykład: 6 × 6 pikseli, dwie kategorie', S(
-    grid(160, 20, 96, _g6, {'0': '#2A2D34', '1': SKIN}, gap=4, nums=_g6, nsize=40,
-         ncol=lambda f: PAPER if f == '#2A2D34' else INK),
-    legend(900, 200, [('#2A2D34', '0 = tło'), (SKIN, '1 = obiekt')], 44, 56, 90)),
-    notes="""Po lewej najprostszy przykład: obraz sześć na sześć pikseli i dwie kategorie. Zero to tło, jedynka to obiekt.""")
+    notes="""Najłatwiej wyobrazić sobie kolorowankę z numerkami. Każde pole ma numer, a numer mówi, jakim kolorem je pomalować. Segmentacja to zadanie odwrotne: dostajemy gotowy, pomalowany obrazek i musimy sami wpisać numer do każdego pola.""")
 
 
 def _three(items):
@@ -528,7 +534,7 @@ slide('Jedynka mówi „obiekt”, ale nie mówi który', S(
     person(680, 520, 2.3, SKIN), person(900, 520, 2.3, SKIN),
     t(680, 360, '1', 72, INK, w=700, f=F_M), t(900, 360, '1', 72, INK, w=700, f=F_M),
     t(800, 590, 'Dwie osoby, ta sama etykieta. Która to która?', 32, ORANGE, w=600), h=620),
-    notes="""Jest jeden haczyk. Jedynka mówi „obiekt”, ale nie mówi, który. Jeśli na zdjęciu są dwie osoby, obie dostaną tę samą etykietę. O tym następny slajd.""")
+    notes="""Jest jeden haczyk. Jedynka mówi „obiekt”, ale nie mówi, który. Jeśli na zdjęciu są dwie osoby, obie dostaną tę samą etykietę.""")
 
 # =====================================================================
 section('Rodzaje segmentacji')
@@ -536,7 +542,7 @@ section('Rodzaje segmentacji')
 slide('Ten sam obrazek: trzy owce na trawie', S(panel(pasture('nat'), 200, 0, 1200, 560, 1200, 560), h=580),
       notes="""[ok. 5 min · start 0:10]
 
-Ten sam obrazek, trzy owce na trawie, i trzy sposoby, żeby go posegmentować.""")
+Weźmy jeden obrazek: trzy owce na trawie. Na kolejnych trzech slajdach posegmentujemy go na trzy różne sposoby, a w rogu każdego z nich zostanie mały oryginał do porównania.""")
 
 
 def _tax(mode, lg, cap_):
@@ -547,15 +553,15 @@ def _tax(mode, lg, cap_):
 
 slide('1. Semantyczna: liczy się tylko rodzaj rzeczy', _tax('sem', [('#F2EFE9', 'owca'), (CLOTH, 'trawa'), ('#4C6E91', 'niebo')], ''),
       cap='Wszystkie owce mają jeden kolor. Dwie z prawej zlały się w jedną plamę: ile ich jest?',
-      notes="""Pierwszy, po lewej, to segmentacja semantyczna. Liczy się tylko rodzaj rzeczy. Wszystkie owce dostają ten sam kolor, bo wszystkie są owcami. Jeśli stoją blisko siebie, zlewają się w jedną białą plamę i nie da się ich policzyć.""")
+      notes="""Pierwszy sposób to segmentacja semantyczna. Liczy się tylko rodzaj rzeczy. Wszystkie owce dostają ten sam kolor, bo wszystkie są owcami. Zobaczcie dwie owce po prawej: stoją blisko siebie, więc zlały się w jedną białą plamę i nie da się ich policzyć.""")
 
 slide('2. Instancyjna: każda owca osobno', _tax('inst', [(ORANGE, 'owca 1'), (CYAN, 'owca 2'), (YELLOW, 'owca 3'), ('#C7C2B8', 'bez etykiety')], ''),
       cap='Wiemy, że są trzy i gdzie stoi każda. Trawa nikogo nie obchodzi.',
-      notes="""Drugi, w środku, to segmentacja instancyjna. Tu każda owca dostaje własny kolor, więc wiemy, że są trzy i gdzie dokładnie stoi każda z nich. Za to trawa nikogo nie obchodzi i zostaje nieoznaczona.""")
+      notes="""Drugi sposób to segmentacja instancyjna. Tu każda owca dostaje własny kolor, więc wiemy, że są trzy i gdzie dokładnie stoi każda z nich. Za to trawa i niebo nikogo nie obchodzą: zostają szare, bez etykiety.""")
 
 slide('3. Panoptyczna: wszystko naraz', _tax('pan', [(ORANGE, 'owca 1'), (CYAN, 'owca 2'), (YELLOW, 'owca 3'), (CLOTH, 'trawa'), ('#4C6E91', 'niebo')], ''),
       cap='Rzeczy policzalne (owce, ludzie, auta) osobno + niepoliczalne (trawa, niebo, droga) jako tło.',
-      notes="""Trzeci, po prawej, to segmentacja panoptyczna, czyli wszystko naraz: każda owca osobno, a do tego trawa jako tło. Rozróżniamy tu rzeczy, które da się policzyć, jak owce, ludzie czy samochody, oraz takie, których się nie liczy, jak trawa, niebo czy droga.""")
+      notes="""Trzeci sposób to segmentacja panoptyczna, czyli połączenie dwóch poprzednich: każda owca osobno, tak jak w instancyjnej, a do tego trawa i niebo jako tło, tak jak w semantycznej. Rozróżniamy tu rzeczy, które da się policzyć, jak owce, ludzie czy samochody, oraz takie, których się nie liczy, jak trawa, niebo czy droga.""")
 
 
 def _street(mode='pan', W=800, H=500):
@@ -592,32 +598,31 @@ slide('Który sposób wybrać? Zależy, do czego to służy', S(
 section('Historia')
 
 
-def _wave(y0, i, W=1300):
-    return ' '.join(f'L{x} {y0 + 12 * math.sin(x / 110 + i * 1.7):.1f}' for x in range(0, W + 1, 20))
-
-
-_layers = [('2015', 'sieć uczy się segmentacji sama', CYAN), ('2012', 'sieci neuronowe jako pomocnik', YELLOW),
-           ('2000', 'cały obraz naraz: GrabCut', SKIN), ('1990', 'aktywne kontury, wododziały', '#A7AEB5'),
-           ('1970', 'progowanie', '#6E7A82')]
-_st = []
-for i, (yr, name, col) in enumerate(_layers):
-    y0, y1 = 40 + i * 112, 40 + (i + 1) * 112
-    top = _wave(y0, i).replace('L', 'M', 1)
-    bot = ' '.join(reversed([f'L{x} {y1 + 12 * math.sin(x / 110 + (i + 1) * 1.7):.1f}' for x in range(0, 1301, 20)]))
-    _st += [p(f'{top} {bot} Z', col), t(60, y0 + 70, yr, 36, DARK, 'start', 500, F_M),
-            t(200, y0 + 70, name, 34, DARK, 'start', 600, F_H)]
-slide('Krótka historia, ułożona jak warstwy skał', S(
-    g(''.join(_st), 150, 0), t(1500, 70, 'najnowsze', 26, MUTED_D, 'start'), arr(1480, 100, 1480, 560, MUTED_D, 4),
-    t(1500, 580, 'najstarsze', 26, MUTED_D, 'start'), h=640), dark=True,
+_hist = [('1970', ['progowanie']), ('1990', ['aktywne', 'kontury,', 'wododziały']), ('2004', ['GrabCut']),
+         ('2012', ['sieć jako', 'pomocnik']), ('2015', ['FCN, U-Net,', 'DeepLab']), ('2017', ['Mask R-CNN']),
+         ('2020', ['transformery']), ('2023', ['SAM'])]
+_tl = [arr(40, 300, 1580, 300, '#3C4248', 6)]
+for i, (yr, name) in enumerate(_hist):
+    x, col = 120 + i * 195, (MUTED_D if i < 3 else CYAN)
+    _tl += [c(x, 300, 20, col), t(x, 260, yr, 32, col, w=500, f=F_M), tm(x, 370, name, 28, fill=PAPER, w=600, f=F_H)]
+for x1, x2, col, s in ((70, 560, MUTED_D, 'metody klasyczne: regułę wymyśla człowiek'),
+                       (655, 1550, CYAN, 'sieci neuronowe: uczą się z przykładów')):
+    _tl += [p(f'M{x1} 200 L{x1} 180 L{x2} 180 L{x2} 200', st=col, sw=3), t((x1 + x2) / 2, 160, s, 28, col, w=600)]
+slide('Historia segmentacji: pół wieku w ośmiu krokach', S(
+    *_tl, t(800, 540, 'przy każdym kroku: jak działa i z czym sobie nie radzi', 30, MUTED_D), h=600), dark=True,
     notes="""[ok. 4 min · start 0:15]
 
-Teraz krótka historia, ułożona jak warstwy skał. Nowe metody nie wyrzuciły starych, tylko się na nich nadbudowały.""")
+Teraz przejdziemy przez historię segmentacji, od lat siedemdziesiątych do dziś. Na osi widzicie osiem kroków, o których opowiem po kolei.
+
+Najpierw metody klasyczne: progowanie, aktywne kontury, wododziały i GrabCut. W nich to człowiek wymyśla regułę, według której komputer dzieli obraz. Potem sieci neuronowe, które tej reguły uczą się same, z przykładów: od pierwszych prób w 2012 roku, przez FCN, U-Net i DeepLab, Mask R-CNN i transformery, aż po model SAM z 2023 roku.
+
+Przy każdym kroku pokażę, jak działa i z czym sobie nie radzi, bo to właśnie słabości jednej metody napędzały powstanie następnej. Nowe metody nie wyrzuciły przy tym starych, wiele z nich pracuje do dziś.""")
 
 _prod = [c(0, 0, 50, '#C9CED3'), c(0, 0, 50, '#C9CED3'),
          p('M0 0 L50 -18 A50 50 0 1 0 50 18 Z', '#C9CED3'), c(0, 0, 50, '#C9CED3')]
 _bin = [c(0, 0, 50, '#FFFFFF'), c(0, 0, 50, '#FFFFFF'), p('M0 0 L50 -18 A50 50 0 1 0 50 18 Z', '#FFFFFF'),
         c(0, 0, 50, '#FFFFFF')]
-slide('Najstarsze warstwy wciąż pracują: kamera nad taśmą', S(
+slide('Najstarsze metody wciąż pracują: kamera nad taśmą', S(
     r(330, 30, 120, 80, '#3C4248', rx=12), r(370, 110, 40, 30, '#3C4248'),
     p('M390 140 L120 380 L680 380 Z', YELLOW, op=.18),
     r(60, 390, 700, 40, '#3C4248', rx=20), *[c(80 + i * 66, 410, 14, GRAY) for i in range(11)],
@@ -627,7 +632,7 @@ slide('Najstarsze warstwy wciąż pracują: kamera nad taśmą', S(
     *[g(sh, 1020 + i * 150, 230) for i, sh in enumerate(_bin)],
     *[t(1020 + i * 150, 350, m, 48, col, w=700) for i, (m, col) in enumerate([('✓', '#7FBF6A'), ('✓', '#7FBF6A'), ('✗', ORANGE), ('✓', '#7FBF6A')])],
     t(1250, 450, 'próg jasności: produkt albo tło', 28, MUTED), h=500),
-    notes="""Najstarsze wciąż się przydają, na przykład w fabrykach, gdzie kamera nad taśmą sprawdza, czy produkt ma właściwy kształt.""")
+    notes="""Najstarsze metody wciąż się przydają, na przykład w fabrykach, gdzie kamera nad taśmą sprawdza, czy produkt ma właściwy kształt. Produkty jadą po ciemnej taśmie, a światło jest zawsze takie samo, więc komputer może po prostu uznać jasne piksele za produkt, a ciemne za tło. Potem porównuje kształt białej plamy ze wzorcem: trzecia sztuka ma wycięty brzeg, więc zostaje odrzucona.""")
 
 
 def _mug(fill='#3A3F47', handle=True):
@@ -649,7 +654,7 @@ slide('Progowanie: jedna liczba dzieli obraz na dwie części', S(
     arr(1060, 260, 1140, 260, ORANGE, 6),
     panel(r(0, 0, 420, 420, '#14161B') + g(_mug('#FFFFFF'), 200, 210), 1160, 40, 420, 420, 420, 420),
     t(1370, 520, 'ciemniejsze od progu = obiekt', 28, MUTED), h=580),
-    notes="""Najgłębsza warstwa, lata siedemdziesiąte: progowanie. Mówimy komputerowi, że wszystko jaśniejsze od pewnej wartości to obiekt, a reszta to tło. Świetnie działa, gdy ciemny przedmiot leży na jasnym stole.""")
+    notes="""Pierwszy krok, lata siedemdziesiąte: progowanie. Z trzech liczb RGB komputer liczy dla każdego piksela jedną, jego jasność, a my wybieramy próg: wszystko ciemniejsze od progu to obiekt, a reszta to tło. Próg najłatwiej znaleźć na histogramie, czyli wykresie, który pokazuje, ile pikseli ma daną jasność. Ciemny kubek i jasny stół tworzą na nim dwie górki, a próg stawiamy w dolinie między nimi. Świetnie to działa, gdy ciemny przedmiot leży na jasnym stole.""")
 
 _th = {k_: ('#14161B' if (v and lum(v) < 140) else '#FFFFFF') for k_, v in NAT.items()}
 slide('Gorzej, gdy świat jest bardziej skomplikowany', S(
@@ -660,7 +665,7 @@ slide('Gorzej, gdy świat jest bardziej skomplikowany', S(
     t(920, 510, 'wynik progowania', 28, MUTED),
     tm(1160, 120, ['Włosy zlały się z cieniem.', 'Okulary, brwi i ubranie', 'to „to samo”.', 'Usta wypadły z twarzy.'],
        32, 1.5, fill=INK, a='start'), h=540),
-    notes="""Gorzej, gdy świat jest bardziej skomplikowany.""")
+    notes="""Gorzej, gdy świat jest bardziej skomplikowany. Tu na twarz z lewej strony pada cień. Próg patrzy tylko na jasność pojedynczego piksela, więc wszystko, co ciemne, wrzuca do jednego worka: włosy zlewają się z cieniem, a okulary, brwi i ubranie stają się dla niego tym samym. Progowanie nie wie nic o kształtach ani o tym, co leży obok piksela.""")
 
 _pear = 'M0 -150 C70 -150 90 -80 70 -30 C130 10 140 120 60 150 C20 165 -20 165 -60 150 C-140 120 -130 10 -70 -30 C-90 -80 -70 -150 0 -150 Z'
 
@@ -682,7 +687,7 @@ slide('Aktywne kontury: gumka recepturka', S(
     t(270, 560, 'rzucamy gumkę wokół obiektu', 30, INK, w=600, f=F_H),
     t(800, 560, 'sama się zaciska', 30, INK, w=600, f=F_H),
     t(1330, 560, 'przylega do krawędzi', 30, INK, w=600, f=F_H), h=600),
-    notes="""Przełom lat osiemdziesiątych i dziewięćdziesiątych: aktywne kontury. Wyobraźcie sobie gumkę recepturkę, którą rzucamy wokół obiektu i która sama zaciska się na jego krawędziach.""")
+    notes="""Przełom lat osiemdziesiątych i dziewięćdziesiątych: aktywne kontury. Wyobraźcie sobie gumkę recepturkę, którą rzucamy wokół obiektu i która sama zaciska się na jego krawędziach. W komputerze ta gumka to zamknięta linia z kilkudziesięciu punktów, które krok po kroku przesuwają się do środka. Działają na nie dwie siły: napięcie gumki, które trzyma linię gładką, i przyciąganie krawędzi, czyli miejsc, gdzie jasność gwałtownie się zmienia. Gumka zatrzymuje się tam, gdzie te siły się równoważą, czyli na brzegu obiektu.""")
 
 
 def _terrain(x):
@@ -698,7 +703,7 @@ slide('Wododziały: obraz jako górzysty teren zalewany wodą', S(
       + ''.join(t(x, 420, 'jezioro', 26, '#FFFFFF', w=600) for x in (250, 1150))
       + t(700, _lvl + 50, 'poziom wody rośnie ↑', 26, '#FFFFFF', w=600), 100, 0),
     t(800, 640, 'jasne piksele = góry, ciemne = doliny. Gdzie spotykają się jeziora, tam jest granica.', 28, MUTED), h=660),
-    notes="""Albo metoda wododziałów: traktujemy obraz jak mapę górzystego terenu, zalewamy ją wodą i patrzymy, gdzie spotykają się jeziora.""")
+    notes="""Albo metoda wododziałów: traktujemy obraz jak mapę górzystego terenu, zalewamy ją wodą i patrzymy, gdzie spotykają się jeziora. Jasność piksela to wysokość terenu: jasne piksele to góry, ciemne to doliny. Woda powoli podnosi się w każdej dolinie i każde jezioro to osobny obszar. Tam, gdzie dwa jeziora miałyby się zlać, stawiamy tamę, i właśnie te tamy są granicami obiektów.""")
 
 _gp = ["..ooo..", ".ooooo.", ".ooooo.", "..ooo..", "...o..."]
 _ge, _gx, _gy, _gs = [], 300, 60, 110
@@ -721,7 +726,7 @@ slide('Lata 2000: komputer patrzy na cały obraz naraz', S(
     l(1100, 280, 1180, 280, ORANGE, 6), t(1200, 290, 'cięcie przez najsłabsze', 28, INK, 'start'),
     r(1090, 370, 480, 110, '#FFFFFF', LINE, 2, 14),
     t(1330, 418, 'Tak działa GrabCut (2004)', 30, INK, w=600, f=F_H), t(1330, 458, 'zobaczycie go za chwilę na żywo', 26, MUTED), h=560),
-    notes="""Lata dwutysięczne: komputer zaczyna patrzeć na cały obraz naraz i szuka takiego podziału, w którym podobne sąsiednie piksele trafiają do tej samej grupy. Na tym działa GrabCut z 2004 roku, który za chwilę zobaczycie na żywo.""")
+    notes="""Lata dwutysięczne: komputer zaczyna patrzeć na cały obraz naraz i szuka takiego podziału, w którym podobne sąsiednie piksele trafiają do tej samej grupy. Na slajdzie każda kropka to piksel, a sąsiednie kropki łączą nitki: grube, gdy piksele mają podobny kolor, i cienkie, gdy różny. Algorytm szuka cięcia, które oddzieli obiekt od tła, przecinając jak najmniej i jak najcieńsze nitki, więc granica sama wypada tam, gdzie zmienia się kolor. Na tym działa GrabCut z 2004 roku, który za chwilę zobaczycie na żywo. Wystarczy w nim z grubsza zaznaczyć obiekt prostokątem, a resztę komputer policzy sam.""")
 
 
 def _net(x, y, w=180, h=200, col='#3C4248', label=None):
@@ -741,7 +746,7 @@ slide('Około 2012: sieć neuronowa na razie tylko pomaga', S(
     t(1060, 430, 'on podejmuje decyzję', 26, MUTED),
     arr(1240, 250, 1320, 250, GRAY, 5),
     r(1340, 210, 200, 80, SKIN, rx=40), t(1440, 262, 'skóra', 32, INK, w=600), h=480),
-    notes="""Około 2012 roku pojawiają się sieci neuronowe, ale na początku tylko jako pomocnik, który opisuje fragmenty obrazu. Decyzję wciąż podejmuje klasyczny algorytm.""")
+    notes="""Około 2012 roku pojawiają się sieci neuronowe, ale na początku tylko jako pomocnik, który opisuje fragmenty obrazu. Decyzję wciąż podejmuje klasyczny algorytm. Sieć dostaje mały wycinek zdjęcia i zamienia go na listę liczb, które opisują, co w nim widać: krawędzie, faktury, kolory. Na podstawie tych liczb klasyczny algorytm decyduje, czy to skóra, włosy, czy tło, i tak fragment po fragmencie, przez cały obraz.""")
 
 slide('2015: sieć uczy się segmentacji sama, od początku do końca', S(
     panel(g(face(0, 0), 180, 200), 80, 60, 330, 420, 360, 460), t(245, 540, 'zdjęcie', 28, MUTED),
@@ -749,7 +754,7 @@ slide('2015: sieć uczy się segmentacji sama, od początku do końca', S(
     p('M600 90 L1000 190 L1000 350 L600 450 Z', '#3C4248'), tm(800, 260, ['jedna sieć', 'uczona na przykładach'], 32, 1.3, fill=PAPER, w=600, f=F_H),
     arr(1040, 270, 1150, 270, ORANGE, 6),
     panel(g(face(0, 0, 1, CLS), 180, 200), 1190, 60, 330, 420, 360, 460), t(1355, 540, 'maska', 28, MUTED), h=580),
-    notes="""A w 2015 roku przychodzi przełom: sieć, która uczy się segmentacji sama, od początku do końca. O niej następny slajd.""")
+    notes="""A w 2015 roku przychodzi przełom: sieć, która uczy się segmentacji sama, od początku do końca. Na wejściu dostaje zdjęcie, a na wyjściu od razu oddaje gotową maskę, piksel po pikselu. Nikt nie pisze jej reguł: uczy się na tysiącach zdjęć z ręcznie zaznaczonymi maskami, porównuje swoją odpowiedź z poprawną i po każdym błędzie trochę się poprawia. O niej następny slajd.""")
 
 # ---------- FCN ----------
 CAT = '#D98E4A'
@@ -805,7 +810,9 @@ for i, n_ in enumerate(_sz):
     _sx += w_ + 84
 slide('Po drodze sieć wielokrotnie zmniejsza obraz', S(*_so, h=560),
       cap='Zdjęcie 512 na 512 kurczy się do 16 na 16. Tak łatwiej uchwycić całość.',
-      notes="""Problem widać na diagramie. Po drodze sieć wielokrotnie zmniejsza obraz, bo tak łatwiej jej uchwycić całość. Zdjęcie 512 na 512 pikseli kurczy się do 16 na 16.""")
+      notes="""FCN działał, ale miał jeden słaby punkt i warto go dobrze zrozumieć, bo kolejne sieci, o których opowiem, to w dużej mierze różne sposoby na jego naprawienie. Chodzi o to, co dzieje się z obrazem w środku sieci.
+
+Widać to na diagramie. Po drodze sieć wielokrotnie zmniejsza obraz, bo tak łatwiej jej uchwycić całość. Zdjęcie 512 na 512 pikseli kurczy się do 16 na 16. Na samym dole jedna kratka odpowiada więc kwadratowi 32 na 32 piksele oryginału.""")
 
 
 def _city(W, H):
@@ -827,13 +834,22 @@ def _city_coarse(W=480, H=480, n=16):
 
 
 def _city_fine(W=480, H=480):
-    cls = _city(W, H)
-    o = [r(0, 0, W, H, '#EDE8DD')]
-    o += [r(i * 24 + 3, j * 24 + 3, 18, 18, {'#C9C2B4': '#ADA392'}.get(cls(i * 24 + 12, j * 24 + 12), cls(i * 24 + 12, j * 24 + 12)), rx=2)
-          for j in range(20) for i in range(20)]
-    pts = ' '.join(f'L{W * (.45 + .12 * math.sin(y / H * math.pi * 1.4)):.1f} {y}' for y in range(0, H + 1, 8)).replace('L', 'M', 1)
-    o.append(p(pts, st='#4C9DB8', sw=W * .1))
-    o += [l(W * .30, y, W * .70, y, '#8B939C', 5) for y in (140, 330)]
+    """Ta sama mapa co _city_coarse, ale z detalami, których 16 × 16 nie pokaże: ulice, mosty, drzewa."""
+    def river(y):
+        return W * (.45 + .12 * math.sin(y / H * math.pi * 1.4))
+    st, pk = '#F4F0E6', (W * .2, H * .28, W * .12)
+    o = [r(0, 0, W, H, '#C9C2B4'), c(W * .66, H * .45, W * .17, '#6B6B6B')]
+    o += [l(v, 0, v, H, st, 1.6) + l(0, v, W, v, st, 1.6) for v in range(6, W, 12)]  # gęsta siatka ulic
+    o += [l(v, 0, v, H, '#FFFFFF', 4.5) + l(0, v, W, v, '#FFFFFF', 4.5) for v in range(66, W, 120)]  # aleje
+    o.append(l(0, H, W, 0, '#FFFFFF', 4.5))  # ukośna aleja
+    o += [c(*pk, '#7FA35F'), p(f'M{pk[0] - pk[2]} {pk[1] + 8} Q{pk[0]} {pk[1] - 40} {pk[0] + pk[2]} {pk[1] - 4}', st='#E9E2C8', sw=2),
+          e(pk[0] + 14, pk[1] + 22, 16, 9, '#4C9DB8')]
+    for k_ in range(46):  # drzewa rozłożone równomiernie po parku (spirala Vogela)
+        a, d = k_ * 2.39996, pk[2] * .9 * math.sqrt((k_ + .5) / 46)
+        o.append(c(pk[0] + d * math.cos(a), pk[1] + d * math.sin(a), 3.2, '#55793F'))
+    pts = ' '.join(f'L{river(y):.1f} {y}' for y in range(-8, H + 9, 8)).replace('L', 'M', 1)
+    o += [p(pts, st='#3E86A0', sw=W * .12 + 4), p(pts, st='#4C9DB8', sw=W * .12)]
+    o += [r(river(y) - W * .085, y - 3.5, W * .17, 7, '#EDE8DD', '#5B6168', 1.5) for y in (66, 186, 306, 426)]  # mosty
     return ''.join(o)
 
 
@@ -923,12 +939,12 @@ def plane(x, y, k=1, col='#3C4248'):
 slide('Skróty przenoszą szczegóły prosto na drugą stronę', S(
     g(unet(skips=True, labels=False), 0, 40, .66),
     t(528, 500, 'turkusowe linie: skróty z lewej na prawą', 28, CYAN, w=600),
-    r(1120, 0, 460, 560, '#FFFFFF', LINE, 2, 16),
-    plane(1350, 80, .8), t(1350, 160, 'pilot widzi miasto z góry', 26, MUTED),
-    panel(_city_coarse(160, 160, 8), 1285, 175, 130, 130, 160, 160, rx=6),
-    arr(1350, 385, 1350, 318, CYAN, 6, 22, '14 10'),
-    panel(_city_fine(480, 480), 1295, 395, 110, 110, 480, 480, rx=6),
-    t(1350, 530, '+ zdjęcia ulic od kogoś na ziemi', 26, CYAN, w=600), h=600),
+    r(1120, 0, 460, 610, '#FFFFFF', LINE, 2, 16),
+    plane(1350, 66, .65), t(1350, 150, 'pilot widzi miasto z góry', 26, MUTED),
+    panel(_city_coarse(), 1280, 170, 140, 140, 480, 480, rx=6),  # te same mapy co na slajdzie z Warszawą
+    arr(1350, 392, 1350, 322, CYAN, 6, 22, '14 10'),
+    panel(_city_fine(), 1280, 402, 140, 140, 480, 480, rx=6),
+    t(1350, 580, '+ zdjęcia ulic od kogoś na ziemi', 26, CYAN, w=600), h=620),
     notes="""Najważniejsze są te turkusowe przerywane linie. To skróty, które przenoszą szczegóły z lewej strony prosto na prawą. Wracając do samolotu: to tak, jakby pilot, który widzi miasto z góry, dostał jeszcze od kogoś na ziemi zdjęcia konkretnych ulic. Dzięki temu sieć wie jednocześnie, co jest na obrazie i gdzie dokładnie biegną krawędzie, nawet tak cienkie jak pojedynczy włos.""")
 
 _warp = ''.join(f'<filter id="w{k_}"><feTurbulence type="fractalNoise" baseFrequency="{.006 + k_ * .002}" numOctaves="2" seed="{k_ * 7 + 3}"/>'
@@ -1114,13 +1130,16 @@ Najciekawsza zmiana polega na odwróceniu pytania. Do tej pory model szedł od p
 
 _q = [('osoba', part(['hair', 'skin', 'brow', 'eye', 'lip', 'gl', 'cloth'], ORANGE)), ('okulary', part(['gl'], CYAN)),
       ('włosy', part(['hair'], HAIR)), ('skóra', part(['skin'], SKIN)), ('ubranie', part(['cloth'], CLOTH)),
-      ('tło', part([], NEUT, bgc='#2A2D34'))]
+      ('tło', part([], NEUT, bgc='#2A2D34')), ('brak obiektu', part([], NEUT))]  # q7: szuflada, która nic nie znalazła
 slide('Każda szuflada oddaje jedną maskę z podpisem', S(
-    *[c(140 + i * 264, 50, 40, '#EFEAE0', GRAY, 3) + t(140 + i * 264, 60, f'q{i + 1}', 28, INK, f=F_M)
-      + arr(140 + i * 264, 96, 140 + i * 264, 150, GRAY, 4, 16)
-      + panel(g(face(0, 0, 1, col, glw=10), 180, 200), 40 + i * 264, 165, 200, 255, 360, 460, rx=10)
-      + t(140 + i * 264, 480, name, 30, INK, w=600, f=F_H) for i, (name, col) in enumerate(_q)], h=520),
-    notes="""Na slajdzie widać to dosłownie. Każde zapytanie, od q1 do q6, zamienia się w jedną maskę z podpisem: osoba, okulary, włosy, skóra, ubranie, tło.""")
+    *[f'<g opacity="{.45 if i == 6 else 1}">' + c(130 + i * 223, 50, 40, '#EFEAE0', GRAY, 3) + t(130 + i * 223, 60, f'q{i + 1}', 28, INK, f=F_M)
+      + arr(130 + i * 223, 96, 130 + i * 223, 150, GRAY, 4, 16)
+      + panel(g(face(0, 0, 1, col, glw=10), 180, 200), 35 + i * 223, 165, 190, 243, 360, 460, rx=10)
+      + t(130 + i * 223, 470, name, 30, INK, w=600, f=F_H) + '</g>' for i, (name, col) in enumerate(_q)],
+    t(130 + 6 * 223, 515, 'odrzucona', 26, ORANGE, w=600), h=540),
+    notes="""Na slajdzie widać to dosłownie. Każde zapytanie, od q1 do q6, zamienia się w jedną maskę z podpisem: osoba, okulary, włosy, skóra, ubranie, tło.
+
+Szuflad jest jednak zwykle dużo więcej niż rzeczy na zdjęciu, więc nie każde zapytanie trafia na prawdziwy obiekt. Takie jak q7 zgłaszają „brak obiektu” albo dają maskę, której model jest bardzo niepewny, i te po prostu odrzucamy. Do wyniku końcowego trafiają tylko zapytania, które coś naprawdę znalazły.""")
 
 slide('Trzy rodzaje segmentacji = jeden model, inaczej odczytany', S(
     *[panel(pasture(m), 20 + i * 530, 40, 500, 233, 1200, 560) + t(270 + i * 530, 340, h_, 30, INK, w=600, f=F_H)
@@ -1150,7 +1169,9 @@ slide('SAM (Meta, 2023): nie ma listy', S(
 
 I ostatni etap tej historii: Segment Anything, model firmy Meta z 2023 roku.
 
-Wszystkie wcześniejsze modele miały zamkniętą listę rzeczy, które znają, na przykład 19 rodzajów obiektów na ulicy. Jeśli czegoś nie było na liście, model tego nie zauważał. SAM działa inaczej. Nie ma listy. Pokazujecie mu, co was interesuje, a on to wycina.""")
+Wszystkie wcześniejsze modele miały zamkniętą listę rzeczy, które znają, na przykład 19 rodzajów obiektów na ulicy. Jeśli czegoś nie było na liście, model tego nie zauważał. SAM działa inaczej. Nie ma listy. Pokazujecie mu, co was interesuje, a on to wycina.
+
+W oryginalnym SAM pokazuje się to geometrycznie: kliknięciem w punkt albo prostokątem. Wskazówki tekstowe, czyli wpisanie samego pojęcia, na przykład „okulary”, żeby model sam znalazł na zdjęciu wszystkie takie obiekty, obsługuje dopiero nowszy SAM 3.""")
 
 FACEM = mono('none', 'none', skin=CYAN, brow=CYAN, eye=CYAN, lip=CYAN, gl=CYAN, neck='none')
 _pr = [('Punkt', 'klik w jeden piksel', GLM, c(-45, -14, 12, ORANGE, '#FFFFFF', 4)),
@@ -1160,7 +1181,7 @@ slide('Jak pokazać, o co chodzi?', S(
     *[panel(g(face(0, 0) + f'<g opacity=".75">{face(0, 0, 1, m_, bg=False, glw=14)}</g>' + mark, 180, 200), 80 + i * 520, 0, 400, 470, 360, 460, rx=12)
       + t(280 + i * 520, 530, h_, 34, INK, w=600, f=F_H) + t(280 + i * 520, 574, sub, 26, ORANGE if i == 2 else MUTED)
       for i, (h_, sub, m_, mark) in enumerate(_pr)], h=600),
-    notes="""Można kliknąć w jeden punkt obiektu albo zaznaczyć go z grubsza prostokątem. Na slajdzie jest też tekst, ale tu uczciwie: w pierwszej wersji SAM wpisywanie słów nie działało. To przyszło dopiero w wersji trzeciej, pod koniec 2025 roku.""")
+    notes="""Można kliknąć w jeden punkt obiektu albo zaznaczyć go z grubsza prostokątem. Trzecia wskazówka na slajdzie, tekst, to właśnie ten nowszy SAM 3 z końca 2025 roku: wpisujecie pojęcie, a model zaznacza każdy pasujący obiekt na zdjęciu.""")
 
 _amb = [('okulary?', GLM), ('twarz?', FACEM), ('cała osoba?', mono(CYAN, 'none'))]
 slide('Klik w okulary: ale co właściwie macie na myśli?', S(
@@ -1182,12 +1203,12 @@ slide('Skąd ta wszechstronność? Z ogromu danych', S(
     arr(1310, 140, 1380, 320, GRAY, 5), arr(1290, 420, 1030, 420, GRAY, 5), arr(900, 320, 990, 140, GRAY, 5), h=560),
     notes="""Skąd ta wszechstronność? Z ogromnej ilości danych: 11 milionów zdjęć i ponad miliard zaznaczonych obiektów. Większość tych zaznaczeń zrobił zresztą sam model, a ludzie je tylko poprawiali.""")
 
-slide('Ograniczenie: SAM wie gdzie, ale nie wie co', S(
+slide('Ograniczenie: oryginalny SAM wie gdzie, ale nie wie co', S(
     panel(g(face(0, 0) + f'<g opacity=".8">{face(0, 0, 1, GLM, bg=False, glw=14)}</g>', 180, 200), 200, 20, 420, 537, 360, 460, rx=12),
     r(760, 160, 420, 90, CYAN, rx=45), t(970, 220, '„tu jest obiekt” ✓', 36, INK, w=600, f=F_H),
     r(760, 320, 420, 90, '#FFFFFF', ORANGE, 4, 45), t(970, 380, '„to są okulary” ✗', 36, ORANGE, w=600, f=F_H), h=580),
     cap='Tyle teorii. Zobaczmy, jak to wygląda naprawdę.',
-    notes="""Jedno ograniczenie: SAM wycina kształt, ale nie wie, co to jest. Powie „tu jest obiekt”, ale nie powie „to są okulary”.
+    notes="""Jedno ograniczenie: oryginalny SAM wyznacza maskę na podstawie waszej wskazówki, czyli punktu albo prostokąta, ale sam nie przypisuje jej żadnej nazwy klasy. Powie „tu jest obiekt”, ale nie powie „to są okulary”. Jeśli potrzebujemy nazw, trzeba go połączyć z innym modelem, który rozpozna, co jest w środku maski.
 
 Tyle teorii. Zobaczmy, jak to wygląda naprawdę.""")
 
@@ -1241,7 +1262,7 @@ def _pair(left, right, l1, l2, r1, r2, rcol=INK):
 slide('Tryb 1: klasyczny — zna tylko kolor', _pair(
     demo_scene('nat'), demo_scene('m1'), 'obraz z kamery', 'beżowa ściana, drewniany stół', 'na pomarańczowo: „skóra”',
     'dłoń, ściana i stół też; okulary nie istnieją', ORANGE),
-    notes="""Tryb pierwszy, klasyczny. To metoda z najstarszej warstwy: komputer szuka pikseli w kolorze skóry, a GrabCut wygładza wynik. Na pomarańczowo jest to, co uznał za skórę. Zwróćcie uwagę na dłoń: też jest pomarańczowa. A jeśli w tle stoi drewniany stół albo jest beżowa ściana, one też się pomalują. Ten algorytm nie ma pojęcia, czym jest twarz. Zna tylko kolor. Okulary dla niego po prostu nie istnieją.""")
+    notes="""Tryb pierwszy, klasyczny. To metoda z najstarszego etapu historii: komputer szuka pikseli w kolorze skóry, a GrabCut wygładza wynik. Na pomarańczowo jest to, co uznał za skórę. Zwróćcie uwagę na dłoń: też jest pomarańczowa. A jeśli w tle stoi drewniany stół albo jest beżowa ściana, one też się pomalują. Ten algorytm nie ma pojęcia, czym jest twarz. Zna tylko kolor. Okulary dla niego po prostu nie istnieją.""")
 
 slide('Tryb 2: sieć od Google — rozumie, co widzi', S(
     panel(demo_scene('m2'), 120, 0, 880, 550, 800, 500),
@@ -1349,14 +1370,18 @@ slide('IoU: część wspólna podzielona przez całość', _frac('IoU', [CYAN] *
 
 slide('Dice: prawie to samo, ale łagodniej', _frac('Dice', [CYAN] * 18, [CYAN] * 18 + [ORANGE] * 3 + [YELLOW] * 2, '0,78',
                                                   'lekarze częściej podają Dice, informatycy IoU'),
-      notes="""Druga miara, Dice, liczy prawie to samo, ale łagodniej. Ta sama predykcja daje 0,78. Lekarze częściej podają Dice, informatycy IoU, więc porównując wyniki z dwóch artykułów, warto sprawdzić, o której mowa.""")
+      notes="""Druga miara, Dice, liczy prawie to samo, ale łagodniej: część wspólną liczy podwójnie i dzieli przez sumę obu zaznaczeń. Ta sama predykcja daje 0,78. Dla jednego obrazu jedną miarę da się przeliczyć na drugą, więc różnią się głównie tym, gdzie się ich używa.
+
+Dice to standard w medycynie: tak ocenia się zaznaczenia narządów i guzów na tomografii czy rezonansie. Często służy też do samego uczenia sieci, bo nie daje się zdominować ogromnemu tłu. IoU to z kolei standard w zbiorach i konkursach ze zwykłymi zdjęciami, na przykład ulic dla samochodów autonomicznych. Porównując wyniki z dwóch artykułów, warto więc sprawdzić, o której mierze mowa.""")
 
 slide('Dokładność: brzmi najlepiej, jest najmniej uczciwa', _frac('Dokładność', [CYAN] * 9 + ['#E3E0D6'] * 11, ['#C9CED3'] * 25, '0,80',
                                                                  'procent trafionych pikseli, razem z tłem'),
       cap='Jedna liczba nigdy nie mówi wszystkiego: w pracach naukowych podaje się kilka miar naraz.',
-      notes="""I trzecia, najprostsza: jaki procent pikseli model trafił. Tutaj 20 z 25, czyli 0,80. Brzmi najlepiej, a jest najmniej uczciwa. Za chwilę pokażę dlaczego.
+      notes="""I trzecia, najprostsza: dokładność, czyli jaki procent wszystkich pikseli model trafił, razem z tłem. Tutaj 20 z 25, czyli 0,80.
 
-Wniosek praktyczny: jedna liczba nigdy nie mówi wszystkiego. W pracach naukowych podaje się kilka miar naraz.""")
+Ma swoje zastosowania. Sprawdza się, gdy wszystkie klasy zajmują podobną część obrazu, na przykład przy dzieleniu zdjęcia satelitarnego na las, pole i wodę. Przydaje się też w trakcie uczenia, jako szybki test, czy model w ogóle idzie w dobrą stronę. Kłopot zaczyna się, gdy tło zajmuje prawie cały obraz: wtedy model, który niczego nie zaznaczy, i tak dostanie świetny wynik. Dlatego dokładność brzmi najlepiej, a przy małych obiektach jest najmniej uczciwa. Za chwilę pokażę to na przykładzie.
+
+Wniosek praktyczny: jedna liczba nigdy nie mówi wszystkiego. W pracach naukowych podaje się kilka miar naraz: IoU albo Dice, żeby ocenić sam obiekt, a dokładność najwyżej jako uzupełnienie.""")
 
 _bar = r(100, 470, 1386, 70, '#8B939C', rx=8) + r(1486, 470, 14, 70, ORANGE, rx=4)
 slide('Gdy 99% obrazu to „nic ciekawego”', S(
@@ -1537,9 +1562,12 @@ slide('3. Szybkość: dokładność kontra czas', S(
     t(1500, 490, 'sekundy', 24, MUTED, 'end'),
     t(280, 140, 'duży, dokładny model', 30, INK, 'end', 600, F_H), r(300, 100, 1200, 70, '#6B7681', rx=8), t(900, 147, '1 klatka: 1,2 s', 30, '#FFFFFF', w=600),
     t(280, 290, 'model z demo', 30, INK, 'end', 600, F_H),
-    *[r(302 + k_ * 100, 250, 94, 70, CYAN, rx=8) for k_ in range(12)], t(900, 230, '12 klatek w tym samym czasie', 26, CYAN, w=600), h=520),
+    # model z demo: ok. 6 klatek/s (README), czas całej klatki razem z wykryciem twarzy i przygotowaniem obrazu
+    *[r(302 + k_ * 1000 / 6, 250, 1000 / 6 - 6, 70, CYAN, rx=8) for k_ in range(7)], t(900, 230, 'ok. 7 klatek w tym samym czasie', 26, CYAN, w=600), h=520),
     cap='Na telefonie liczy się każda milisekunda.',
-    notes="""Po trzecie: szybkość. Przykład z przygotowania tego wykładu: duży, bardzo dokładny model do twarzy liczył jedną klatkę przez 1,2 sekundy. Ten, którego używaliśmy w demo, jest mniejszy i robi to w jedną dziesiątą sekundy. Wybór modelu to zawsze kompromis między dokładnością a szybkością, a na telefonie liczy się każda milisekunda.""")
+    notes="""Po trzecie: szybkość. Przykład z przygotowania tego wykładu: duży, bardzo dokładny model do twarzy liczył jedną klatkę przez 1,2 sekundy. Ten, którego używaliśmy w demo, jest mniejszy: na zwykłym laptopie robi około sześciu klatek na sekundę, czyli jedna zajmuje mu mniej więcej jedną szóstą sekundy. Widzieliście tę liczbę na ekranie podczas pokazu.
+
+To czas całej klatki, wszystko razem: wykrycie twarzy, wycięcie i przeskalowanie kadru, sama sieć i wklejenie maski z powrotem. Przygotowanie obrazu to tylko kilka milisekund, prawie cały czas zajmuje sama sieć. Wybór modelu to zawsze kompromis między dokładnością a szybkością, a na telefonie liczy się każda milisekunda.""")
 
 _ann = [('pełna maska', 'najdroższa', sheep(0, 0, 1.7, CYAN, CYAN), 1.0),
         ('sam prostokąt', 'tańszy', sheep(0, 0, 1.7) + r(-158, -98, 286, 194, st=ORANGE, sw=6, rx=8), .3),
