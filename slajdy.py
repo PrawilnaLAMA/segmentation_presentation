@@ -285,7 +285,7 @@ def build():
     page = (f'<!doctype html><html lang="pl"><meta charset="utf-8"><title>Gdzie kończy się twarz?</title>'
             f'<link rel="stylesheet" href="{FONTS}">'
             + ''.join(render(sd, n + 1, total) for n, sd in enumerate(SLIDES)) + VIEWER + '</html>')
-    (ROOT / 'slajdy.html').write_text(page)
+    (ROOT / 'slajdy.html').write_text(page, encoding='utf-8')  # bez tego Windows zapisuje w cp1250 i wywraca się na „→”
     print(f'slajdy.html: {total} slajdów')
 
 
